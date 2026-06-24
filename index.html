@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SBAR Tool for Nurses - Homepage</title>
+  <script>
+    if (window.top !== window.self) {
+      // If inside an iframe, break out
+      window.top.location = window.location;
+    }
+  </script>
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+  <header>
+    <h1>Welcome to the SBAR Tool for Nurses</h1>
+    <p>Improving Nursing Communication for Safer Patient Care</p>
+  </header>
+
+  <nav>
+    <a href="login.html" id="login-link">Login</a>
+    <div class="dropdown" id="profile-dropdown" style="display: none;">
+      <a href="#" class="dropdown-toggle" id="profile-toggle">Profile</a>
+      <div class="dropdown-menu">
+        <a href="account.html">Account Settings</a>
+        <a href="#" id="logout-link">Logout</a>
+      </div>
+    </div>
+    <a href="patientlist.html" id="patients-link">Patients</a>
+    <a href="SBAR.html">Dashboard</a>
+    <a href="researchutil.html">Research Utilization</a>
+  </nav>
+
+  <main>
+    <section>
+      <h2>What is SBAR?</h2>
+      <p>SBAR stands for <strong>Situation, Background, Assessment, and Recommendation</strong>. It is a structured method for nurses and healthcare providers to communicate critical information clearly and effectively, especially during shift handovers or emergency situations.</p>
+    </section>
+
+    <section>
+      <h2>Why Use This Tool?</h2>
+      <ul>
+        <li>Improves patient safety through clear, concise communication</li>
+        <li>Helps standardize nursing reports during shift changes</li>
+        <li>Promotes accountability with digital nurse signatures</li>
+        <li>Easy-to-use dashboard for documentation and shift summaries</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>&copy; 2025 SBAR Tool Project | Developed for Hospital Use in Batangas Province</p>
+    <p>Property of <strong>B.Bautista / C.A.L</strong></p>
+  </footer>
+
+  <script>
+    // Check if user is logged in
+    function checkLoginStatus() {
+      const currentNurse = sessionStorage.getItem("currentNurse");
+      const loginLink = document.getElementById("login-link");
+      const patientsLink = document.getElementById("patients-link");
+      const profileDropdown = document.getElementById("profile-dropdown");
+
+      if (currentNurse) {
+        // User is logged in
+        // Hide login link
+        loginLink.style.display = "none";
+        
+        // Show Patients button
+        patientsLink.style.display = "inline-block";
+        
+        // Show Profile dropdown
+        profileDropdown.style.display = "inline-block";
+      } else {
+        // User is not logged in
+        loginLink.style.display = "inline-block";
+        loginLink.textContent = "Login";
+        loginLink.href = "login.html";
+        
+        // Hide Patients button
+        patientsLink.style.display = "none";
+        
+        // Hide Profile dropdown
+        profileDropdown.style.display = "none";
+      }
+    }
+
+    // Dropdown toggle functionality
+    function setupDropdown() {
+      const profileToggle = document.getElementById("profile-toggle");
+      const profileDropdown = document.getElementById("profile-dropdown");
+      const logoutLink = document.getElementById("logout-link");
+
+      if (profileToggle) {
+        profileToggle.addEventListener("click", function(e) {
+          e.preventDefault();
+          profileDropdown.classList.toggle("active");
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener("click", function(e) {
+          if (!profileDropdown.contains(e.target)) {
+            profileDropdown.classList.remove("active");
+          }
+        });
+      }
+
+      // Handle logout
+      if (logoutLink) {
+        logoutLink.addEventListener("click", function(e) {
+          e.preventDefault();
+          // Clear session storage
+          sessionStorage.removeItem("currentNurse");
+          // Redirect to login page
+          window.location.href = "login.html";
+        });
+      }
+    }
+
+    // Check login status when page loads
+    window.onload = function() {
+      checkLoginStatus();
+      setupDropdown();
+    };
+  </script>
+
+</body>
+</html>
+

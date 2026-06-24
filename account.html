@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Account Settings - SBAR Tool</title>
+  <script>
+    if (window.top !== window.self) {
+      window.top.location = window.location;
+    }
+  </script>
+  <link rel="stylesheet" href="account.css">
+</head>
+<body>
+
+  <header>
+    <h1>Account Settings</h1>
+    <p>Manage Your Profile and Session</p>
+  </header>
+
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="patientlist.html">Patients</a>
+    <a href="SBAR.html">Dashboard</a>
+    <a href="researchutil.html">Research Utilization</a>
+  </nav>
+
+  <main>
+    <!-- Profile Information Section -->
+    <section class="account-section">
+      <h2>Profile Information</h2>
+      <div class="profile-info">
+        <div class="info-row">
+          <label>Full Name:</label>
+          <span id="display-fullname">Loading...</span>
+        </div>
+        <div class="info-row">
+          <label>Email:</label>
+          <span id="display-email">Loading...</span>
+        </div>
+        <div class="info-row">
+          <label>Hospital:</label>
+          <span id="display-hospital">Loading...</span>
+        </div>
+        <div class="info-row">
+          <label>Department:</label>
+          <span id="display-department">Loading...</span>
+        </div>
+        <button class="btn btn-primary" onclick="toggleEditMode()">Edit Profile</button>
+      </div>
+
+      <!-- Edit Profile Form (Hidden by default) -->
+      <div class="edit-profile" id="edit-form" style="display: none;">
+        <h3>Update Profile</h3>
+        <div class="form-group">
+          <label for="edit-fullname">Full Name:</label>
+          <input type="text" id="edit-fullname" placeholder="Enter full name">
+        </div>
+        <div class="form-group">
+          <label for="edit-email">Email Address:</label>
+          <input type="email" id="edit-email" placeholder="Enter email address">
+        </div>
+        <div class="form-group locked-field">
+          <label for="edit-hospital">Hospital: <span class="readonly-badge">🔒 Locked</span></label>
+          <input type="text" id="edit-hospital" placeholder="Hospital name" readonly disabled>
+          <p class="field-note">Hospital assignment cannot be changed. Contact administrator if this needs to be updated.</p>
+        </div>
+        <div class="form-group">
+          <label for="edit-department">Department:</label>
+          <input type="text" id="edit-department" placeholder="Enter department">
+        </div>
+        <div id="edit-message" class="message"></div>
+        <div class="button-group">
+          <button class="btn btn-success" onclick="saveProfile()">Save Changes</button>
+          <button class="btn btn-secondary" onclick="cancelEdit()">Cancel</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Password Change Section -->
+    <section class="account-section">
+      <h2>Change Password</h2>
+      <div class="form-group">
+        <label for="current-password">Current Password:</label>
+        <input type="password" id="current-password" placeholder="Enter current password">
+      </div>
+      <div class="form-group">
+        <label for="new-password">New Password:</label>
+        <input type="password" id="new-password" placeholder="Enter new password (min. 6 characters)">
+      </div>
+      <div class="form-group">
+        <label for="confirm-password">Confirm New Password:</label>
+        <input type="password" id="confirm-password" placeholder="Confirm new password">
+      </div>
+      <div id="password-message" class="message"></div>
+      <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
+    </section>
+
+    <!-- Session Management Section -->
+    <section class="account-section">
+      <h2>Session Management</h2>
+      <div class="session-info">
+        <p><strong>Current Session:</strong> Active</p>
+        <p><strong>Email:</strong> <span id="session-email">Loading...</span></p>
+        <p><strong>Last Login:</strong> <span id="last-login">Current session</span></p>
+      </div>
+      <button class="btn btn-warning" onclick="logoutUser()">Logout</button>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <p>&copy; 2025 SBAR Tool Project | Developed for Hospital Use in Batangas Province</p>
+    <p>Property of <strong>B.Bautista / C.A.L</strong></p>
+  </footer>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, updatePassword, updateEmail, reauthenticateWithCredential, EmailAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCACFjgnRVKjmL-1s68lLpmGNE79xlhBw8",
+      authDomain: "sbar-tool.firebaseapp.com",
+      projectId: "sbar-tool",
+      storageBucket: "sbar-tool.appspot.com",
+      messagingSenderId: "529664032389",
+      appId: "1:529664032389:web:2cb701c9c684e8618133ec",
+      measurementId: "G-KPF92F2ZK4"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let currentNurseData = null;
+
+    // Check if user is logged in
+    window.addEventListener('load', async function() {
+      const nurseSession = sessionStorage.getItem("currentNurse");
+      
+      if (!nurseSession) {
+        alert("Please login first!");
+        window.location.href = "login.html";
+        return;
+      }
+
+      currentNurseData = JSON.parse(nurseSession);
+      
+      // Verify Firebase auth state
+      auth.onAuthStateChanged((user) => {
+        if (!user) {
+          alert("Session expired. Please login again.");
+          sessionStorage.removeItem("currentNurse");
+          window.location.href = "login.html";
+        } else {
+          loadProfileData();
+        }
+      });
+    });
+
+    // Load profile data
+    function loadProfileData() {
+      document.getElementById('display-fullname').textContent = currentNurseData.fullname || 'N/A';
+      document.getElementById('display-email').textContent = currentNurseData.email || 'N/A';
+      document.getElementById('display-hospital').textContent = currentNurseData.hospital || 'N/A';
+      document.getElementById('display-department').textContent = currentNurseData.department || 'N/A';
+      
+      // Session info
+      document.getElementById('session-email').textContent = currentNurseData.email || 'N/A';
+      
+      // Get login time from Firebase
+      const user = auth.currentUser;
+      if (user && user.metadata) {
+        const lastLogin = new Date(user.metadata.lastSignInTime);
+        document.getElementById('last-login').textContent = lastLogin.toLocaleString();
+      }
+    }
+
+    // Toggle edit mode
+    window.toggleEditMode = function() {
+      document.querySelector('.profile-info').style.display = 'none';
+      document.getElementById('edit-form').style.display = 'block';
+      
+      // Populate edit form
+      document.getElementById('edit-fullname').value = currentNurseData.fullname || '';
+      document.getElementById('edit-email').value = currentNurseData.email || '';
+      document.getElementById('edit-hospital').value = currentNurseData.hospital || '';
+      document.getElementById('edit-department').value = currentNurseData.department || '';
+    };
+
+    // Cancel edit
+    window.cancelEdit = function() {
+      document.querySelector('.profile-info').style.display = 'block';
+      document.getElementById('edit-form').style.display = 'none';
+      document.getElementById('edit-message').textContent = '';
+    };
+
+    // Save profile - hospital field is excluded from update
+    window.saveProfile = async function() {
+      const fullname = document.getElementById('edit-fullname').value.trim();
+      const email = document.getElementById('edit-email').value.trim().toLowerCase();
+      const department = document.getElementById('edit-department').value.trim();
+      const message = document.getElementById('edit-message');
+
+      if (!fullname || !email || !department) {
+        message.textContent = "❌ Please fill in all editable fields.";
+        message.style.color = "red";
+        return;
+      }
+
+      // Email validation
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(email)) {
+        message.textContent = "❌ Please enter a valid email address.";
+        message.style.color = "red";
+        return;
+      }
+
+      try {
+        const user = auth.currentUser;
+        
+        // Check if email has changed
+        const emailChanged = email !== currentNurseData.email;
+        
+        if (emailChanged) {
+          // Update Firebase Auth email
+          await updateEmail(user, email);
+        }
+
+        // Update Firestore - hospital is NOT included in update
+        await updateDoc(doc(db, "nurses", currentNurseData.uid), {
+          fullname: fullname,
+          email: email,
+          department: department
+          // Note: hospital is intentionally excluded
+        });
+
+        // Update session storage
+        currentNurseData.fullname = fullname;
+        currentNurseData.email = email;
+        currentNurseData.department = department;
+        // Hospital remains unchanged
+        sessionStorage.setItem("currentNurse", JSON.stringify(currentNurseData));
+
+        // Update display
+        loadProfileData();
+        
+        message.textContent = "✅ Profile updated successfully!" + (emailChanged ? " Please verify your new email address." : "");
+        message.style.color = "green";
+
+        setTimeout(() => {
+          cancelEdit();
+        }, 2000);
+
+      } catch (error) {
+        console.error("Error updating profile:", error);
+        
+        let errorMessage = "❌ Failed to update profile: ";
+        if (error.code === "auth/requires-recent-login") {
+          errorMessage += "For security, please logout and login again to change your email.";
+        } else if (error.code === "auth/email-already-in-use") {
+          errorMessage += "This email is already in use by another account.";
+        } else if (error.code === "auth/invalid-email") {
+          errorMessage += "Invalid email address format.";
+        } else {
+          errorMessage += error.message;
+        }
+        
+        message.textContent = errorMessage;
+        message.style.color = "red";
+      }
+    };
+
+    // Change password
+    window.changePassword = async function() {
+      const currentPassword = document.getElementById('current-password').value;
+      const newPassword = document.getElementById('new-password').value;
+      const confirmPassword = document.getElementById('confirm-password').value;
+      const message = document.getElementById('password-message');
+
+      message.textContent = "";
+
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        message.textContent = "❌ Please fill in all password fields.";
+        message.style.color = "red";
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        message.textContent = "❌ New passwords do not match.";
+        message.style.color = "red";
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        message.textContent = "❌ Password must be at least 6 characters.";
+        message.style.color = "red";
+        return;
+      }
+
+      if (currentPassword === newPassword) {
+        message.textContent = "❌ New password must be different from current password.";
+        message.style.color = "red";
+        return;
+      }
+
+      try {
+        const user = auth.currentUser;
+        
+        if (!user) {
+          throw new Error("No authenticated user found");
+        }
+
+        const credential = EmailAuthProvider.credential(currentNurseData.email, currentPassword);
+        
+        // Reauthenticate
+        await reauthenticateWithCredential(user, credential);
+        
+        // Update password
+        await updatePassword(user, newPassword);
+
+        message.textContent = "✅ Password updated successfully!";
+        message.style.color = "green";
+
+        // Clear password fields
+        document.getElementById('current-password').value = '';
+        document.getElementById('new-password').value = '';
+        document.getElementById('confirm-password').value = '';
+
+      } catch (error) {
+        console.error("Password change error:", error);
+        if (error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
+          message.textContent = "❌ Current password is incorrect.";
+        } else if (error.code === "auth/weak-password") {
+          message.textContent = "❌ Password is too weak. Use at least 6 characters.";
+        } else if (error.code === "auth/requires-recent-login") {
+          message.textContent = "❌ Please logout and login again to change password.";
+        } else {
+          message.textContent = "❌ Failed to update password: " + error.message;
+        }
+        message.style.color = "red";
+      }
+    };
+
+    // Logout user
+    window.logoutUser = async function() {
+      if (confirm("Are you sure you want to logout?")) {
+        try {
+          await signOut(auth);
+          sessionStorage.removeItem("currentNurse");
+          localStorage.removeItem("currentNurse");
+          alert("✅ Logged out successfully!");
+          window.location.href = "login.html";
+        } catch (error) {
+          console.error("Logout error:", error);
+          alert("Failed to logout: " + error.message);
+        }
+      }
+    };
+
+  </script>
+
+</body>
+</html>

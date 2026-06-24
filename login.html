@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - SBAR Tool for Nurses</title>
+  <script>
+    if (window.top !== window.self) {
+      window.top.location = window.location;
+    }
+  </script>
+  <link rel="stylesheet" href="login.css">
+</head>
+<body>
+
+  <header>
+    <h1>SBAR Tool for Nurses</h1>
+    <p>Improving Nursing Communication for Safer Patient Care</p>
+  </header>
+
+  <div class="login-wrapper">
+    <div class="login-container">
+      <h2>Nurse Login</h2>
+      <p class="subtitle">Sign in to access your SBAR dashboard</p>
+
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" placeholder="Enter your email" autocomplete="email" />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <div class="password-wrapper">
+          <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" />
+          <button type="button" class="toggle-password" id="togglePassword" aria-label="Show password">
+            <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <svg class="eye-off-icon" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+              <line x1="1" y1="1" x2="23" y2="23"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div id="message"></div>
+
+      <button class="login-btn" id="login-btn" onclick="login()">Login</button>
+
+      <div class="divider">or</div>
+
+      <button class="register-btn" onclick="location.href='signup.html'">Create New Account</button>
+
+      <div class="back-home">
+        <a href="index.html">← Back to Home</a>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <p>&copy; 2025 SBAR Tool Project | Developed for Hospital Use in Batangas Province</p>
+    <p>Property of <strong>B.Bautista / C.A.L</strong></p>
+  </footer>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCACFjgnRVKjmL-1s68lLpmGNE79xlhBw8",
+      authDomain: "sbar-tool.firebaseapp.com",
+      projectId: "sbar-tool",
+      storageBucket: "sbar-tool.appspot.com",
+      messagingSenderId: "529664032389",
+      appId: "1:529664032389:web:2cb701c9c684e8618133ec",
+      measurementId: "G-KPF92F2ZK4"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Password visibility toggle
+    const togglePasswordBtn = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    const eyeIcon = document.querySelector('.eye-icon');
+    const eyeOffIcon = document.querySelector('.eye-off-icon');
+
+    togglePasswordBtn.addEventListener('click', function() {
+      const type = passwordInput.type === 'password' ? 'text' : 'password';
+      passwordInput.type = type;
+      
+      if (type === 'text') {
+        eyeIcon.style.display = 'none';
+        eyeOffIcon.style.display = 'block';
+        togglePasswordBtn.setAttribute('aria-label', 'Hide password');
+      } else {
+        eyeIcon.style.display = 'block';
+        eyeOffIcon.style.display = 'none';
+        togglePasswordBtn.setAttribute('aria-label', 'Show password');
+      }
+    });
+
+    // Allow Enter key to submit
+    document.getElementById('password').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        login();
+      }
+    });
+
+    document.getElementById('email').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        login();
+      }
+    });
+
+    window.login = async function () {
+      const emailInput = document.getElementById('email');
+      const passwordInput = document.getElementById('password');
+      const message = document.getElementById('message');
+      const loginBtn = document.getElementById('login-btn');
+
+      const email = emailInput.value.trim().toLowerCase();
+      const password = passwordInput.value.trim();
+
+      message.textContent = "";
+      message.className = "";
+      message.style.display = "none";
+
+      // Check for empty fields
+      if (!email || !password) {
+        message.textContent = "⚠️ Please fill in both email and password.";
+        message.className = "error";
+        message.style.display = "block";
+        return;
+      }
+
+      // Basic email format validation
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(email)) {
+        message.textContent = "⚠️ Please enter a valid email address.";
+        message.className = "error";
+        message.style.display = "block";
+        return;
+      }
+
+      // Disable button and show loading state
+      loginBtn.disabled = true;
+      loginBtn.textContent = "Logging in...";
+
+      try {
+        // Attempt Firebase login
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Fetch nurse profile from Firestore
+        const nurseDoc = await getDoc(doc(db, "nurses", user.uid));
+        if (!nurseDoc.exists()) {
+          throw new Error("Nurse profile not found in database.");
+        }
+
+        const nurseData = nurseDoc.data();
+
+        // Store nurse profile in sessionStorage
+        sessionStorage.setItem("currentNurse", JSON.stringify({
+          email: nurseData.email || email,
+          fullname: nurseData.fullname,
+          hospital: nurseData.hospital,
+          department: nurseData.department,
+          uid: user.uid
+        }));
+
+        // Show success message
+        message.textContent = "✅ Login successful! Redirecting...";
+        message.className = "success";
+        message.style.display = "block";
+
+        // Redirect to home page
+        setTimeout(() => {
+          window.location.href = "index.html";
+        }, 1000);
+
+      } catch (error) {
+        console.error("Login error:", error);
+
+        // Re-enable button
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Login";
+
+        // Handle all common Firebase login errors
+        switch (error.code) {
+          case "auth/user-not-found":
+          case "auth/wrong-password":
+          case "auth/invalid-credential":
+            message.textContent = "❌ Invalid email or password. Please try again.";
+            break;
+          case "auth/invalid-email":
+            message.textContent = "❌ Please enter a valid email address.";
+            break;
+          case "auth/too-many-requests":
+            message.textContent = "❌ Too many failed attempts. Please try again later.";
+            break;
+          case "auth/network-request-failed":
+            message.textContent = "❌ Network error. Please check your connection.";
+            break;
+          default:
+            message.textContent = "❌ Login failed: " + (error.message || "Unknown error");
+        }
+        message.className = "error";
+        message.style.display = "block";
+      }
+    };
+  </script>
+
+</body>
+</html>

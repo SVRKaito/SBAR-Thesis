@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SBAR Dashboard - SBAR Tool for Nurses</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>
+    if (window.top !== window.self) {
+      window.top.location = window.location;
+    }
+  </script>
+  <link rel="stylesheet" href="sbar.css">
+</head>
+<body>
+
+<!-- Sidebar -->
+<div id="mySidebar" class="sidebar">
+  <div class="sidebar-header">
+    <h4 class="sidebar-title">Menu</h4>
+    <button class="closebtn" onclick="closeNav()" title="Close Menu">&times;</button>
+  </div>
+  
+  <div class="sidebar-nav">
+    <a href="index.html">
+      <span class="icon">🏠</span>
+      <span>Home</span>
+    </a>
+    <a href="javascript:void(0)" onclick="goToPatientList()">
+      <span class="icon">👥</span>
+      <span>Patient List</span>
+    </a>
+    <a href="javascript:void(0)" onclick="goToNewSBAR()">
+      <span class="icon">📝</span>
+      <span>New SBAR Report</span>
+    </a>
+    
+    <div class="sidebar-divider"></div>
+    
+    <a href="researchutil.html">
+      <span class="icon">📚</span>
+      <span>Research Utilization</span>
+    </a>
+    <a href="account.html">
+      <span class="icon">⚙️</span>
+      <span>Account Settings</span>
+    </a>
+    
+    <div class="sidebar-divider"></div>
+    
+    <a href="login.html" class="logout-link">
+      <span class="icon">🚪</span>
+      <span>Logout</span>
+    </a>
+  </div>
+</div>
+
+<!-- Overlay -->
+<div id="sidebarOverlay" class="sidebar-overlay" onclick="closeNav()"></div>
+
+<!-- Main Content Wrapper -->
+<div id="mainWrapper">
+
+<!-- Navbar -->
+<div class="navbar">
+  <button class="openbtn" onclick="openNav()" title="Open Menu">☰</button>
+  <h3>SBAR Tool Dashboard</h3>
+</div>
+
+<div id="mainContent" class="content">
+  <h2 id="pageTitle">📋 SBAR Reporting Dashboard</h2>
+
+  <div class="section" id="workInfoSection">
+    <h3>📍 1. Work Information</h3>
+    <div class="form-group">
+      <label for="hospital">Hospital</label>
+      <select id="hospital" disabled></select>
+    </div>
+    <div class="form-group">
+      <label for="department">Department</label>
+      <select id="department" disabled></select>
+    </div>
+    <div class="form-group">
+      <label for="shift">Shift *</label>
+      <select id="shift" required>
+        <option value="">Select shift</option>
+        <option>Morning (6am–2pm)</option>
+        <option>Afternoon (2pm–10pm)</option>
+        <option>Night (10pm–6am)</option>
+        <option>Morning (7am–3pm)</option>
+        <option>Afternoon (3pm–11pm)</option>
+        <option>Night (11pm–7am)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section" id="patientInfoSection">
+    <h3>👤 2. Patient Information</h3>
+    <div class="form-group"><label for="pname">Patient Name *</label><input type="text" id="pname" required></div>
+    <div class="form-group"><label for="page">Patient Age *</label><input type="number" id="page" required></div>
+    <div class="form-group"><label for="diagnosis">Diagnosis *</label><input type="text" id="diagnosis" required></div>
+    <div class="form-group"><label for="room">Room Number *</label><input type="text" id="room" required></div>
+  </div>
+
+  <div class="section" id="sbarSection">
+    <h3>📝 3. SBAR Report</h3>
+    <div class="form-group"><label for="situation">Situation *</label><textarea id="situation" required></textarea></div>
+    <div class="form-group"><label for="background">Background *</label><textarea id="background" required></textarea></div>
+    <div class="form-group"><label for="assessment">Assessment *</label><textarea id="assessment" required></textarea></div>
+    <div class="form-group"><label for="recommendation">Recommendation *</label><textarea id="recommendation" required></textarea></div>
+  </div>
+
+  <div class="section" id="signatureSection">
+    <h3>✍️ 4. Signature & Additional Notes</h3>
+    <div class="form-group"><label for="nurse">Reporting Nurse</label><input type="text" id="nurse" readonly></div>
+    <div class="form-group"><label for="notes">Shift Notes Summary</label><textarea id="notes"></textarea></div>
+    <div class="button-group">
+      <button id="submitBtn">✅ Submit SBAR Report</button>
+      <button id="backBtn" onclick="window.location.href='patientlist.html'" style="background-color: #27ae60;">👥 Back to Patient List</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase compat SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCACFjgnRVKjmL-1s68lLpmGNE79xlhBw8",
+    authDomain: "sbar-tool.firebaseapp.com",
+    projectId: "sbar-tool",
+    storageBucket: "sbar-tool.appspot.com",
+    messagingSenderId: "529664032389",
+    appId: "1:529664032389:web:2cb701c9c684e8618133ec"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  firebase.auth().onAuthStateChanged(user => {
+    if (user) {
+      const nurse = JSON.parse(sessionStorage.getItem("currentNurse"));
+      if (!nurse) {
+        alert("Nurse data missing. Redirecting...");
+        window.location.href = "login.html";
+        return;
+      }
+
+      document.getElementById("hospital").innerHTML = `<option>${nurse.hospital}</option>`;
+      document.getElementById("department").innerHTML = `<option>${nurse.department}</option>`;
+      document.getElementById("nurse").value = nurse.fullname;
+
+      // Check for view or edit mode
+      const viewPatient = sessionStorage.getItem("viewPatient");
+      const editPatient = sessionStorage.getItem("editPatient");
+      let isEditMode = false;
+      let isViewMode = false;
+      let editDocId = null;
+
+      if (viewPatient) {
+        console.log("View mode detected");
+        const patientData = JSON.parse(viewPatient);
+        isViewMode = true;
+        
+        // Update UI for view mode
+        document.getElementById("pageTitle").textContent = "👁️ Viewing SBAR Report";
+        fillForm(patientData);
+        enableViewMode();
+        
+        // Clean up sessionStorage
+        sessionStorage.removeItem("viewPatient");
+        
+      } else if (editPatient) {
+        console.log("Edit mode detected");
+        const editData = JSON.parse(editPatient);
+        isEditMode = true;
+        editDocId = editData.id;
+        
+        // Update UI for edit mode
+        document.getElementById("pageTitle").textContent = "✏️ Editing SBAR Report";
+        fillForm(editData.data);
+        enableEditMode();
+        
+      } else {
+        console.log("Create mode - new SBAR report");
+        // This is create mode (default)
+        document.getElementById("pageTitle").textContent = "📝 Create New SBAR Report";
+        
+        // Ensure all form elements are enabled for new report
+        const formElements = document.querySelectorAll("input:not(#nurse):not(#hospital):not(#department), select:not(#hospital):not(#department), textarea");
+        formElements.forEach(element => {
+          element.disabled = false;
+          element.readOnly = false;
+        });
+        
+        // Ensure submit button shows correct text
+        document.getElementById("submitBtn").textContent = "Submit SBAR";
+        document.getElementById("submitBtn").style.backgroundColor = "#1a73e8";
+      }
+
+      // Validation function for required fields
+      function validateForm() {
+        const requiredFields = [
+          { id: 'shift', label: 'Shift' },
+          { id: 'pname', label: 'Patient Name' },
+          { id: 'page', label: 'Patient Age' },
+          { id: 'diagnosis', label: 'Diagnosis' },
+          { id: 'room', label: 'Room Number' },
+          { id: 'situation', label: 'Situation' },
+          { id: 'background', label: 'Background' },
+          { id: 'assessment', label: 'Assessment' },
+          { id: 'recommendation', label: 'Recommendation' }
+        ];
+
+        const missingFields = [];
+
+        for (const field of requiredFields) {
+          const element = document.getElementById(field.id);
+          const value = element.value.trim();
+          
+          if (!value) {
+            missingFields.push(field.label);
+            // Add visual feedback
+            element.style.borderColor = '#e74c3c';
+            element.style.backgroundColor = '#fff5f5';
+          } else {
+            // Remove visual feedback if field is filled
+            element.style.borderColor = '';
+            element.style.backgroundColor = '';
+          }
+        }
+
+        if (missingFields.length > 0) {
+          const message = `⚠️ Please fill in the following required fields:\n\n${missingFields.map(f => '• ' + f).join('\n')}`;
+          alert(message);
+          
+          // Focus on the first missing field
+          const firstMissingField = requiredFields.find(f => missingFields.includes(f.label));
+          if (firstMissingField) {
+            document.getElementById(firstMissingField.id).focus();
+          }
+          
+          return false;
+        }
+
+        return true;
+      }
+
+      // Submit button handler
+      document.getElementById("submitBtn").onclick = async () => {
+        if (isViewMode) {
+          // In view mode, this shouldn't be visible, but just in case
+          alert("This record is in view-only mode.");
+          return;
+        }
+
+        // Validate form before proceeding
+        if (!validateForm()) {
+          return;
+        }
+
+        const patient = {
+          hospital: nurse.hospital.trim(),
+          department: nurse.department,
+          shift: document.getElementById("shift").value.trim(),
+          pname: document.getElementById("pname").value.trim(),
+          page: document.getElementById("page").value.trim(),
+          diagnosis: document.getElementById("diagnosis").value.trim(),
+          room: document.getElementById("room").value.trim(),
+          situation: document.getElementById("situation").value.trim(),
+          background: document.getElementById("background").value.trim(),
+          assessment: document.getElementById("assessment").value.trim(),
+          recommendation: document.getElementById("recommendation").value.trim(),
+          nurse: nurse.fullname,
+          notes: document.getElementById("notes").value.trim(),
+          timestamp: new Date().toISOString()
+        };
+
+        try {
+          if (isEditMode && editDocId) {
+            // Save to history subcollection before updating
+            await db.collection("patients")
+              .doc(editDocId)
+              .collection("history")
+              .add({
+                action: "Updated",
+                data: patient,
+                modifiedBy: nurse.fullname,
+                modifiedByEmail: nurse.email,
+                timestamp: new Date().toISOString(),
+                hospital: patient.hospital
+              });
+            
+            await db.collection("patients").doc(editDocId).set(patient);
+            alert("✅ SBAR report updated successfully!");
+            // Clean up sessionStorage
+            sessionStorage.removeItem("editPatient");
+          } else {
+            // Save new patient
+            const docRef = await db.collection("patients").add(patient);
+            
+            // Save creation to history subcollection
+            await db.collection("patients")
+              .doc(docRef.id)
+              .collection("history")
+              .add({
+                action: "Created",
+                data: patient,
+                modifiedBy: nurse.fullname,
+                modifiedByEmail: nurse.email,
+                timestamp: new Date().toISOString(),
+                hospital: patient.hospital
+              });
+            
+            alert("✅ SBAR report submitted successfully!");
+          }
+
+          // Redirect to patient list
+          window.location.href = "patientlist.html";
+        } catch (error) {
+          console.error("Error saving report:", error);
+          alert("❌ Failed to save report. Please try again.");
+        }
+      };
+
+      function fillForm(data) {
+        if (!data) return;
+        
+        document.getElementById("shift").value = data.shift || "";
+        document.getElementById("pname").value = data.pname || "";
+        document.getElementById("page").value = data.page || "";
+        document.getElementById("diagnosis").value = data.diagnosis || "";
+        document.getElementById("room").value = data.room || "";
+        document.getElementById("situation").value = data.situation || "";
+        document.getElementById("background").value = data.background || "";
+        document.getElementById("assessment").value = data.assessment || "";
+        document.getElementById("recommendation").value = data.recommendation || "";
+        document.getElementById("notes").value = data.notes || "";
+      }
+
+      function enableViewMode() {
+        // Disable all form elements
+        const formElements = document.querySelectorAll("input:not(#nurse), select, textarea");
+        formElements.forEach(element => {
+          element.disabled = true;
+          element.readOnly = true;
+        });
+
+        // Add visual styling for view mode
+        document.querySelectorAll(".section").forEach(section => {
+          section.classList.add("view-mode");
+        });
+
+        // Hide submit button and change back button text
+        document.getElementById("submitBtn").style.display = "none";
+        document.getElementById("backBtn").textContent = "⬅️ Back to Patient List";
+        document.getElementById("backBtn").className = "back-btn";
+
+        // Add a notice at the top
+        const notice = document.createElement("div");
+        notice.className = "notice-box";
+        notice.innerHTML = "👁️ This SBAR report is in read-only mode";
+        document.getElementById("mainContent").insertBefore(notice, document.getElementById("pageTitle").nextSibling);
+      }
+
+      function enableEditMode() {
+        // Ensure all form elements are enabled (except nurse name and hospital/department)
+        const formElements = document.querySelectorAll("input:not(#nurse):not(#hospital):not(#department), select:not(#hospital):not(#department), textarea");
+        formElements.forEach(element => {
+          element.disabled = false;
+          element.readOnly = false;
+        });
+
+        // Change submit button text and styling
+        document.getElementById("submitBtn").textContent = "💾 Update SBAR Report";
+        document.getElementById("submitBtn").style.backgroundColor = "#28a745";
+        
+        // Change back button text
+        document.getElementById("backBtn").textContent = "❌ Cancel Edit";
+
+        // Add a notice at the top for edit mode
+        const notice = document.createElement("div");
+        notice.className = "notice-box warning";
+        notice.innerHTML = "✏️ You are editing this SBAR report - make your changes and click 'Update'";
+        document.getElementById("mainContent").insertBefore(notice, document.getElementById("pageTitle").nextSibling);
+      }
+
+      // Add real-time validation feedback
+      const requiredFieldIds = ['shift', 'pname', 'page', 'diagnosis', 'room', 'situation', 'background', 'assessment', 'recommendation'];
+      
+      requiredFieldIds.forEach(fieldId => {
+        const element = document.getElementById(fieldId);
+        if (element) {
+          element.addEventListener('input', function() {
+            // Clear error styling when user types
+            if (this.value.trim()) {
+              this.style.borderColor = '';
+              this.style.backgroundColor = '';
+            }
+          });
+          
+          element.addEventListener('change', function() {
+            // Clear error styling when user changes value (for select)
+            if (this.value.trim()) {
+              this.style.borderColor = '';
+              this.style.backgroundColor = '';
+            }
+          });
+        }
+      });
+
+    } else {
+      alert("Not authenticated. Please login.");
+      window.location.href = "login.html";
+    }
+  });
+ 
+
+  function openNav() {
+    const sidebar = document.getElementById("mySidebar");
+    const overlay = document.getElementById("sidebarOverlay");
+    const mainWrapper = document.getElementById("mainWrapper");
+    
+    sidebar.style.width = "280px";
+    sidebar.classList.add("open");
+    overlay.classList.add("active");
+    mainWrapper.classList.add("pushed");
+    
+    // Prevent body scroll when sidebar is open
+    document.body.style.overflow = "hidden";
+    document.body.classList.add("sidebar-open");
+  }
+
+  function closeNav() {
+    const sidebar = document.getElementById("mySidebar");
+    const overlay = document.getElementById("sidebarOverlay");
+    const mainWrapper = document.getElementById("mainWrapper");
+    
+    sidebar.style.width = "0";
+    sidebar.classList.remove("open");
+    overlay.classList.remove("active");
+    mainWrapper.classList.remove("pushed");
+    
+    // Restore body scroll
+    document.body.style.overflow = "auto";
+    document.body.classList.remove("sidebar-open");
+  }
+
+  function goToPatientList() {
+    console.log("Patient List clicked");
+    closeNav();
+    window.location.href = "patientlist.html";
+  }
+
+  function goToNewSBAR() {
+    console.log("New SBAR clicked - clearing sessionStorage");
+    
+    // Clear any existing view or edit data to ensure fresh SBAR form
+    sessionStorage.removeItem("viewPatient");
+    sessionStorage.removeItem("editPatient");
+    
+    closeNav();
+    
+    // Reload current page to get fresh form
+    window.location.reload();
+  }
+  
+  // Close sidebar with ESC key
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' || event.key === 'Esc') {
+      const sidebar = document.getElementById("mySidebar");
+      if (sidebar.style.width !== "0px" && sidebar.style.width !== "") {
+        closeNav();
+      }
+    }
+  });
+</script>
+
+<footer class="footer">
+  <p>&copy; 2025 SBAR Tool Project | Developed for Hospital Use in Batangas Province</p>
+  <p>Property of <strong>B.Bautista / C.A.L</strong></p>
+</footer>
+
+</div>
+<!-- End Main Wrapper -->
+
+</body>
+</html>

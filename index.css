@@ -1,0 +1,374 @@
+* {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #fdfeff;
+      color: #333;
+    }
+
+    header {
+      background: linear-gradient(90deg, #2c3e50, #34495e);
+      color: #ffffff;
+      padding: 40px 20px;
+      text-align: center;
+      background-size: cover;
+      background-position: center;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+      text-shadow: 1px 1px 2px #000;
+    }
+
+    header p {
+      font-size: 1.1rem;
+      text-shadow: 1px 1px 1px #000;
+    }
+
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      padding: 15px 10px;
+      background-color: #02000b;
+      border-bottom: 1px solid #ddd;
+    }
+
+    nav a {
+       color: white;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 1rem;
+      padding: 8px 0;
+      position: relative;
+      transition: color 0.3s;
+    }
+
+    nav a:not(.dropdown-toggle)::after {
+      content: '';
+      position: absolute;
+      width: 0%;
+      height: 2px;
+      bottom: 0;
+      left: 0;
+      background-color: whitesmoke;
+      transition: width 0.3s ease;
+    }
+
+    nav a:hover {
+      color: whitesmoke;
+    }
+
+    nav a:not(.dropdown-toggle):hover::after {
+      width: 100%;
+    }
+
+    main {
+      flex: 1;
+      width: 100%;
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 0 20px;
+    }
+
+    /* Card-like style for large screens */
+    @media (min-width: 1025px) {
+      main {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.05);
+        padding: 30px;
+      }
+    }
+
+    section {
+      margin-bottom: 40px;
+    }
+
+    h2 {
+      color: #2c3e50;
+      font-size: 1.5rem;
+    }
+
+    p, li {
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    ul {
+      padding-left: 20px;
+    }
+
+    section img {
+      width: 100%;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+
+    .footer {
+      background-color: #2c3e50;
+      color: white;
+      text-align: center;
+      padding: 10px;
+      font-size: 0.8em;
+    }
+
+    /* === Popup/Modal Styles === */
+    .popup {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(44, 62, 80, 0.8);
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .popup-content {
+      background-color: #fdfeff;
+      margin: 2% auto;
+      padding: 0;
+      border: 1px solid #ddd;
+      width: 90%;
+      height: 90%;
+      border-radius: 10px;
+      position: relative;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+      from {
+        transform: translateY(-50px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .popup-close {
+      color: #999;
+      position: absolute;
+      right: 15px;
+      top: 15px;
+      font-size: 32px;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 1001;
+      background-color: white;
+      border-radius: 50%;
+      width: 45px;
+      height: 45px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      transition: all 0.3s ease;
+    }
+
+    .popup-close:hover,
+    .popup-close:focus {
+      color: #2c3e50;
+      background-color: #f0f0f0;
+      transform: rotate(90deg);
+    }
+
+    .popup-content iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 10px;
+    }
+
+    /* Hide patients link by default */
+    #patients-link {
+      display: none;
+    }
+
+    /* === Dropdown Menu Styles === */
+    .dropdown {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .dropdown-toggle {
+      cursor: pointer;
+      color: white;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 1rem;
+      padding: 8px 0;
+      position: relative;
+      transition: color 0.3s;
+      display: inline-block;
+    }
+
+    .dropdown-toggle::after {
+      content: '▼';
+      font-size: 0.6rem;
+      transition: transform 0.3s;
+      display: inline-block;
+      margin-left: 5px;
+    }
+
+    .dropdown.active .dropdown-toggle::after {
+      transform: rotate(180deg);
+    }
+
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background-color: white;
+      min-width: 180px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      border-radius: 8px;
+      margin-top: 10px;
+      z-index: 1000;
+      overflow: hidden;
+    }
+
+    .dropdown.active .dropdown-menu {
+      display: block;
+      animation: dropdownFade 0.2s ease;
+    }
+
+    @keyframes dropdownFade {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .dropdown-menu a {
+      display: block;
+      padding: 12px 20px;
+      color: #333;
+      text-decoration: none;
+      font-weight: 400;
+      transition: background-color 0.2s;
+    }
+
+    .dropdown-menu a:hover {
+      background-color: #f5f5f5;
+      color: #2c3e50;
+    }
+
+    .dropdown-menu a::after {
+      display: none;
+    }
+
+    /* === Responsive Styles === */
+    @media (max-width: 768px) {
+      header h1 {
+        font-size: 2rem;
+      }
+
+      header p {
+        font-size: 1rem;
+      }
+
+      nav {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      nav a {
+        width: 100%;
+        text-align: center;
+        padding: 12px;
+      }
+
+      main {
+        padding: 0 15px;
+      }
+
+      .popup-content {
+        width: 95%;
+        height: 95%;
+        margin: 2.5% auto;
+      }
+
+      .popup-close {
+        width: 40px;
+        height: 40px;
+        font-size: 28px;
+        right: 10px;
+        top: 10px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      header {
+        padding: 30px 10px;
+      }
+
+      header h1 {
+        font-size: 1.7rem;
+      }
+
+      header p {
+        font-size: 0.95rem;
+      }
+
+      nav a {
+        font-size: 0.95rem;
+      }
+
+      h2 {
+        font-size: 1.25rem;
+      }
+
+      p, li {
+        font-size: 0.95rem;
+      }
+
+      .footer {
+        font-size: 0.75rem;
+        padding: 8px;
+      }
+
+      .popup-content {
+        width: 98%;
+        height: 98%;
+        margin: 1% auto;
+        border-radius: 8px;
+      }
+
+      .popup-close {
+        width: 35px;
+        height: 35px;
+        font-size: 24px;
+        right: 8px;
+        top: 8px;
+      }
+    }
+    
+    

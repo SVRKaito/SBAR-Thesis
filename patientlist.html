@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Patient List - SBAR Tool</title>
+  <script>
+    if (window.top !== window.self) {
+      window.top.location = window.location;
+    }
+  </script>
+  <link rel="stylesheet" href="patientlist.css">
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div id="mySidebar" class="sidebar">
+  <div class="sidebar-header">
+    <h4 class="sidebar-title">Menu</h4>
+    <button class="closebtn" onclick="closeNav()" title="Close Menu">&times;</button>
+  </div>
+  
+  <div class="sidebar-nav">
+    <a href="index.html">
+      <span class="icon">🏠</span>
+      <span>Home</span>
+    </a>
+    <a href="javascript:void(0)" onclick="goToDashboard()">
+      <span class="icon">📋</span>
+      <span>New SBAR Report</span>
+    </a>
+    
+    <div class="sidebar-divider"></div>
+    
+    <a href="researchutil.html">
+      <span class="icon">📚</span>
+      <span>Research Utilization</span>
+    </a>
+    <a href="account.html">
+      <span class="icon">⚙️</span>
+      <span>Account Settings</span>
+    </a>
+    
+    <div class="sidebar-divider"></div>
+    
+    <a href="login.html" class="logout-link">
+      <span class="icon">🚪</span>
+      <span>Logout</span>
+    </a>
+  </div>
+</div>
+
+<!-- Overlay -->
+<div id="sidebarOverlay" class="sidebar-overlay" onclick="closeNav()"></div>
+
+<!-- Main Content Wrapper -->
+<div id="mainWrapper">
+
+<!-- Navbar -->
+<div class="navbar">
+  <button class="menu-btn" onclick="openNav()" title="Open Menu">☰</button>
+  <h2>👥 Patient List - <span id="hospitalName"></span></h2>
+</div>
+
+<div class="container">
+  <div class="search-container">
+    <input type="text" id="searchInput" placeholder="🔍 Search by patient name..." oninput="filterPatients()" />
+  </div>
+  
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Patient Name</th>
+          <th>Room</th>
+          <th>Diagnosis</th>
+          <th>Nurse</th>
+          <th>Timestamp</th>
+          <th class="actions-cell">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="patientTableBody">
+        <!-- Filled by JS -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- History Log Modal -->
+<div id="historyModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>📋 History Log - <span id="historyPatientName"></span></h2>
+      <span class="close" onclick="closeHistoryModal()">&times;</span>
+    </div>
+    <div class="modal-body" id="historyContent">
+      <!-- History entries will be loaded here -->
+    </div>
+  </div>
+</div>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCACFjgnRVKjmL-1s68lLpmGNE79xlhBw8",
+    authDomain: "sbar-tool.firebaseapp.com",
+    projectId: "sbar-tool",
+    storageBucket: "sbar-tool.appspot.com",
+    messagingSenderId: "529664032389",
+    appId: "1:529664032389:web:2cb701c9c684e8618133ec"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const auth = firebase.auth();
+
+  let fullPatientList = [];
+
+  auth.onAuthStateChanged(async (user) => {
+    if (!user) {
+      alert("Not logged in. Redirecting...");
+      window.location.href = "login.html";
+      return;
+    }
+
+    try {
+      const nurseDoc = await db.collection("nurses").doc(user.uid).get();
+      if (!nurseDoc.exists) {
+        alert("Nurse profile not found.");
+        return;
+      }
+
+      const nurse = nurseDoc.data();
+      document.getElementById("hospitalName").textContent = nurse.hospital;
+      
+      // Store nurse data with uid for Firestore rules validation
+      const nurseWithUid = {
+        ...nurse,
+        uid: user.uid
+      };
+      sessionStorage.setItem("currentNurse", JSON.stringify(nurseWithUid));
+      loadPatients(nurse.hospital);
+    } catch (error) {
+      console.error("Error loading nurse profile:", error);
+      alert("Error loading nurse profile.");
+    }
+  });
+
+  async function loadPatients(hospital) {
+    const tbody = document.getElementById("patientTableBody");
+    tbody.innerHTML = "";
+    fullPatientList = [];
+
+    try {
+      const snapshot = await db.collection("patients")
+        .where("hospital", "==", hospital)
+        .orderBy("timestamp", "desc")
+        .get();
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const id = doc.id;
+        fullPatientList.push({ ...data, id });
+      });
+
+      filterPatients();
+    } catch (error) {
+      console.error("Error loading patients:", error);
+      alert("❌ Error loading patients: " + error.message);
+    }
+  }
+
+  function filterPatients() {
+    const search = document.getElementById("searchInput").value.toLowerCase();
+    const tbody = document.getElementById("patientTableBody");
+    tbody.innerHTML = "";
+
+    fullPatientList.forEach(patient => {
+      if (patient.pname.toLowerCase().includes(search)) {
+        const tr = document.createElement("tr");
+        
+        // Create cells
+        tr.innerHTML = `
+          <td data-label="Patient Name">${escapeHtml(patient.pname)}</td>
+          <td data-label="Room">${escapeHtml(patient.room || "N/A")}</td>
+          <td data-label="Diagnosis">${escapeHtml(patient.diagnosis || "N/A")}</td>
+          <td data-label="Nurse">${escapeHtml(patient.nurse || "N/A")}</td>
+          <td data-label="Timestamp">${patient.timestamp ? new Date(patient.timestamp).toLocaleString() : "N/A"}</td>
+          <td class="actions-cell" data-label="Actions">
+            <div class="action-buttons-wrapper">
+              <button class="view-btn" data-patient-id="${patient.id}" title="View SBAR Report">👁️ View</button>
+              <div class="dropdown-actions">
+                <button class="more-btn" data-patient-id="${patient.id}" title="More actions">⋮</button>
+                <div class="dropdown-menu-actions" id="dropdown-${patient.id}">
+                  <a href="#" class="edit-action" data-patient-id="${patient.id}">✏️ Edit</a>
+                  <a href="#" class="history-link" data-patient-id="${patient.id}" data-patient-name="${escapeHtml(patient.pname)}">📜 History</a>
+                  <a href="#" class="danger" data-patient-id="${patient.id}">🗑️ Delete</a>
+                </div>
+              </div>
+            </div>
+          </td>
+        `;
+        
+        tbody.appendChild(tr);
+      }
+    });
+
+    // Show message if no results
+    if (tbody.children.length === 0) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td colspan="6" style="text-align: center; color: #666; font-style: italic;">No patients found</td>`;
+      tbody.appendChild(tr);
+    }
+    
+    // Attach event listeners to newly created buttons
+    attachButtonEventListeners();
+  }
+  
+  // Helper function to escape HTML
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+  
+  // Attach event listeners to action buttons
+  function attachButtonEventListeners() {
+    // View buttons
+    document.querySelectorAll('.view-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        viewPatient(this.getAttribute('data-patient-id'));
+      });
+    });
+    
+    // More buttons (dropdown toggle)
+    document.querySelectorAll('.more-btn').forEach(btn => {
+      btn.addEventListener('click', function(event) {
+        toggleDropdown(event, this.getAttribute('data-patient-id'));
+      });
+    });
+    
+    // Edit links
+    document.querySelectorAll('.edit-action').forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        editPatient(this.getAttribute('data-patient-id'));
+      });
+    });
+    
+    // History links
+    document.querySelectorAll('.history-link').forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        viewHistory(
+          this.getAttribute('data-patient-id'),
+          this.getAttribute('data-patient-name')
+        );
+      });
+    });
+    
+    // Delete links
+    document.querySelectorAll('.danger').forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        deletePatient(this.getAttribute('data-patient-id'));
+      });
+    });
+  }
+
+  // Toggle dropdown menu
+  function toggleDropdown(event, patientId) {
+    event.stopPropagation();
+    const dropdown = document.getElementById(`dropdown-${patientId}`);
+    const button = event.currentTarget;
+    
+    // Close all other dropdowns
+    document.querySelectorAll('.dropdown-menu-actions').forEach(menu => {
+      if (menu.id !== `dropdown-${patientId}`) {
+        menu.classList.remove('show');
+      }
+    });
+    
+    // Toggle current dropdown
+    const isShowing = dropdown.classList.contains('show');
+    dropdown.classList.toggle('show');
+    
+    // Position the dropdown if showing
+    if (!isShowing) {
+      const rect = button.getBoundingClientRect();
+      const dropdownHeight = 120; // Approximate height
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      
+      // Position dropdown
+      if (spaceBelow >= dropdownHeight || spaceBelow > spaceAbove) {
+        // Position below button
+        dropdown.style.top = (rect.bottom + 5) + 'px';
+      } else {
+        // Position above button
+        dropdown.style.top = (rect.top - dropdownHeight - 5) + 'px';
+      }
+      
+      // Horizontal positioning - align to right of button
+      dropdown.style.left = (rect.right - 160) + 'px';
+      
+      // Make sure it doesn't go off screen
+      if (rect.right - 160 < 10) {
+        dropdown.style.left = '10px';
+      }
+    }
+  }
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    // Don't close if clicking inside a dropdown menu
+    if (!e.target.closest('.dropdown-menu-actions') && !e.target.closest('.more-btn')) {
+      document.querySelectorAll('.dropdown-menu-actions').forEach(menu => {
+        menu.classList.remove('show');
+      });
+    }
+  });
+
+  // Close dropdowns on window resize or scroll
+  window.addEventListener('resize', function() {
+    document.querySelectorAll('.dropdown-menu-actions').forEach(menu => {
+      menu.classList.remove('show');
+    });
+  });
+
+  window.addEventListener('scroll', function() {
+    document.querySelectorAll('.dropdown-menu-actions').forEach(menu => {
+      menu.classList.remove('show');
+    });
+  }, true);
+
+  // Helper function to close all dropdowns
+  function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown-menu-actions').forEach(menu => {
+      menu.classList.remove('show');
+    });
+  }
+
+  async function viewPatient(patientId) {
+    closeAllDropdowns();
+    
+    try {
+      // Fetch the patient data from Firestore
+      const patientDoc = await db.collection("patients").doc(patientId).get();
+      
+      if (!patientDoc.exists) {
+        alert("❌ Patient not found!");
+        return;
+      }
+      
+      const patientData = patientDoc.data();
+      
+      // Store complete patient data in sessionStorage for view mode
+      sessionStorage.setItem("viewPatient", JSON.stringify(patientData));
+      sessionStorage.removeItem("editPatient");
+      
+      // Redirect to SBAR.html
+      window.location.href = "SBAR.html";
+    } catch (error) {
+      console.error("Error loading patient data:", error);
+      alert("❌ Error loading patient data: " + error.message);
+    }
+  }
+
+  async function editPatient(patientId) {
+    closeAllDropdowns();
+    
+    try {
+      // Fetch the patient data from Firestore
+      const patientDoc = await db.collection("patients").doc(patientId).get();
+      
+      if (!patientDoc.exists) {
+        alert("❌ Patient not found!");
+        return;
+      }
+      
+      const patientData = patientDoc.data();
+      
+      // Store patient data with ID for edit mode
+      sessionStorage.setItem("editPatient", JSON.stringify({
+        id: patientId,
+        data: patientData
+      }));
+      sessionStorage.removeItem("viewPatient");
+      
+      // Redirect to SBAR.html
+      window.location.href = "SBAR.html";
+    } catch (error) {
+      console.error("Error loading patient data:", error);
+      alert("❌ Error loading patient data: " + error.message);
+    }
+  }
+
+  async function deletePatient(patientId) {
+    closeAllDropdowns();
+    
+    if (!confirm("⚠️ Are you sure you want to delete this patient record?\n\nThis action will also delete all associated history records and cannot be undone.")) {
+      return;
+    }
+
+    try {
+      // Show loading state
+      const loadingMsg = document.createElement('div');
+      loadingMsg.id = 'deleteLoading';
+      loadingMsg.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); z-index: 10000; text-align: center;';
+      loadingMsg.innerHTML = '<p style="font-size: 2rem; margin-bottom: 10px;">⏳</p><p style="color: #666; font-size: 1.1rem;">Deleting patient record...</p>';
+      document.body.appendChild(loadingMsg);
+
+      // Delete all history records first
+      const historySnapshot = await db.collection("patients")
+        .doc(patientId)
+        .collection("history")
+        .get();
+      
+      const historyDeletePromises = historySnapshot.docs.map(doc => doc.ref.delete());
+      await Promise.all(historyDeletePromises);
+      
+      // Then delete the patient record
+      await db.collection("patients").doc(patientId).delete();
+      
+      // Remove loading message
+      document.body.removeChild(loadingMsg);
+      
+      alert("✅ Patient record and all associated history have been deleted successfully.");
+      
+      // Reload the patient list
+      const currentNurseStr = sessionStorage.getItem("currentNurse");
+      if (currentNurseStr) {
+        const currentNurse = JSON.parse(currentNurseStr);
+        if (currentNurse.hospital) {
+          loadPatients(currentNurse.hospital);
+        } else {
+          console.error("Hospital not found in currentNurse");
+          window.location.reload();
+        }
+      } else {
+        console.error("currentNurse not found in sessionStorage");
+        window.location.reload();
+      }
+    } catch (error) {
+      // Remove loading message if it exists
+      const loadingMsg = document.getElementById('deleteLoading');
+      if (loadingMsg) {
+        document.body.removeChild(loadingMsg);
+      }
+      
+      console.error("Error deleting patient:", error);
+      alert("❌ Failed to delete patient: " + error.message);
+    }
+  }
+
+  async function viewHistory(patientId, patientName) {
+    closeAllDropdowns();
+    
+    const modal = document.getElementById("historyModal");
+    const historyContent = document.getElementById("historyContent");
+    const patientNameSpan = document.getElementById("historyPatientName");
+    
+    // Show modal with loading message
+    modal.style.display = "block";
+    patientNameSpan.textContent = patientName;
+    historyContent.innerHTML = `
+      <div style="text-align: center; padding: 40px 20px;">
+        <p style="font-size: 3rem; margin-bottom: 10px;">⏳</p>
+        <p style="color: #666; font-size: 1.1rem;">Loading history records...</p>
+      </div>
+    `;
+    
+    try {
+      // Check if user is authenticated
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        throw new Error("Not authenticated. Please log in again.");
+      }
+      
+      console.log("Loading history for patient:", patientId);
+      console.log("Current user:", currentUser.uid);
+      
+      // Fetch all history records for this patient
+      const historySnapshot = await db.collection("patients")
+        .doc(patientId)
+        .collection("history")
+        .orderBy("timestamp", "desc")
+        .get();
+      
+      console.log("History records found:", historySnapshot.size);
+      
+      if (historySnapshot.empty) {
+        historyContent.innerHTML = `
+          <div style="text-align: center; padding: 40px 20px;">
+            <p style="font-size: 3rem; margin-bottom: 10px;">📝</p>
+            <p style="color: #666; font-size: 1.1rem; font-weight: 500;">No History Available</p>
+            <p style="color: #999; font-size: 0.95rem; margin-top: 10px;">This patient has no recorded history yet.</p>
+          </div>
+        `;
+        return;
+      }
+      
+      const historyRecords = [];
+      historySnapshot.forEach(doc => {
+        historyRecords.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      // Function to compare and get changes
+      function getChanges(current, previous) {
+        if (!previous) return null;
+        
+        const changes = [];
+        const fieldsToCheck = [
+          { key: 'pname', label: 'Patient Name' },
+          { key: 'page', label: 'Age' },
+          { key: 'room', label: 'Room' },
+          { key: 'diagnosis', label: 'Diagnosis' },
+          { key: 'shift', label: 'Shift' },
+          { key: 'situation', label: 'Situation' },
+          { key: 'background', label: 'Background' },
+          { key: 'assessment', label: 'Assessment' },
+          { key: 'recommendation', label: 'Recommendation' },
+          { key: 'notes', label: 'Notes' }
+        ];
+        
+        fieldsToCheck.forEach(field => {
+          const currentVal = (current.data[field.key] || '').toString().trim();
+          const previousVal = (previous.data[field.key] || '').toString().trim();
+          
+          if (currentVal !== previousVal) {
+            changes.push({
+              field: field.label,
+              key: field.key,
+              from: previousVal || '(empty)',
+              to: currentVal || '(empty)'
+            });
+          }
+        });
+        
+        return changes.length > 0 ? changes : null;
+      }
+      
+      // Function to highlight a field if it was changed
+      function getFieldClass(key, changes) {
+        if (!changes) return '';
+        const changed = changes.some(c => c.key === key);
+        return changed ? 'field-changed' : '';
+      }
+      
+      // Build history HTML
+      let historyHTML = '';
+      historyRecords.forEach((history, index) => {
+        const date = new Date(history.timestamp);
+        const previousHistory = index < historyRecords.length - 1 ? historyRecords[index + 1] : null;
+        const changes = getChanges(history, previousHistory);
+        
+        historyHTML += `
+          <div class="history-entry">
+            <div class="history-header">
+              <span class="history-action ${history.action.toLowerCase().replace(/ /g, '-')}">${history.action}</span>
+              <span class="history-date">${date.toLocaleString()}</span>
+            </div>
+            <div class="history-info">
+              <p><strong>Modified by:</strong> ${history.modifiedBy} (${history.modifiedByEmail})</p>
+            </div>`;
+        
+        // Show changes summary if there are changes
+        if (changes && changes.length > 0) {
+          historyHTML += `
+            <div class="changes-summary">
+              <h4>📝 Changes Made (${changes.length}):</h4>
+              <ul class="changes-list">`;
+          
+          changes.forEach(change => {
+            const isLongText = change.from.length > 50 || change.to.length > 50;
+            
+            if (isLongText) {
+              historyHTML += `
+                <li>
+                  <strong>${change.field}:</strong> Modified
+                  <div class="change-detail">
+                    <div class="change-from">
+                      <span class="change-label">From:</span>
+                      <div class="change-text">${change.from}</div>
+                    </div>
+                    <div class="change-to">
+                      <span class="change-label">To:</span>
+                      <div class="change-text">${change.to}</div>
+                    </div>
+                  </div>
+                </li>`;
+            } else {
+              historyHTML += `
+                <li>
+                  <strong>${change.field}:</strong> 
+                  <span class="old-value">${change.from}</span> 
+                  → 
+                  <span class="new-value">${change.to}</span>
+                </li>`;
+            }
+          });
+          
+          historyHTML += `
+              </ul>
+            </div>`;
+        }
+        
+        historyHTML += `
+            <details class="history-details">
+              <summary>View Full Record Data</summary>
+              <div class="history-data">
+                <div class="data-grid">
+                  <div class="data-item ${getFieldClass('pname', changes)}">
+                    <strong>Patient Name:</strong> ${history.data.pname || 'N/A'}
+                  </div>
+                  <div class="data-item ${getFieldClass('page', changes)}">
+                    <strong>Age:</strong> ${history.data.page || 'N/A'}
+                  </div>
+                  <div class="data-item ${getFieldClass('room', changes)}">
+                    <strong>Room:</strong> ${history.data.room || 'N/A'}
+                  </div>
+                  <div class="data-item ${getFieldClass('diagnosis', changes)}">
+                    <strong>Diagnosis:</strong> ${history.data.diagnosis || 'N/A'}
+                  </div>
+                  <div class="data-item ${getFieldClass('shift', changes)}">
+                    <strong>Shift:</strong> ${history.data.shift || 'N/A'}
+                  </div>
+                  <div class="data-item">
+                    <strong>Department:</strong> ${history.data.department || 'N/A'}
+                  </div>
+                </div>
+                <div class="sbar-section">
+                  <h4>SBAR Details:</h4>
+                  <div class="sbar-item ${getFieldClass('situation', changes)}">
+                    <strong>Situation:</strong>
+                    <p>${history.data.situation || 'N/A'}</p>
+                  </div>
+                  <div class="sbar-item ${getFieldClass('background', changes)}">
+                    <strong>Background:</strong>
+                    <p>${history.data.background || 'N/A'}</p>
+                  </div>
+                  <div class="sbar-item ${getFieldClass('assessment', changes)}">
+                    <strong>Assessment:</strong>
+                    <p>${history.data.assessment || 'N/A'}</p>
+                  </div>
+                  <div class="sbar-item ${getFieldClass('recommendation', changes)}">
+                    <strong>Recommendation:</strong>
+                    <p>${history.data.recommendation || 'N/A'}</p>
+                  </div>
+                  <div class="sbar-item ${getFieldClass('notes', changes)}">
+                    <strong>Notes:</strong>
+                    <p>${history.data.notes || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
+        `;
+      });
+      
+      historyContent.innerHTML = historyHTML;
+      
+    } catch (error) {
+      console.error("Error loading history:", error);
+      console.error("Error code:", error.code);
+      console.error("Error details:", error);
+      
+      let errorMessage = error.message || 'Unable to load history records.';
+      let helpText = '';
+      
+      // Provide specific help for permission errors
+      if (error.code === 'permission-denied' || error.message.includes('permission')) {
+        errorMessage = 'Permission Denied';
+        helpText = `
+          <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin: 20px 0; text-align: left;">
+            <p style="color: #856404; font-weight: 600; margin-bottom: 10px;">🔒 Firestore Security Rules Need Update</p>
+            <p style="color: #856404; font-size: 0.9rem; line-height: 1.6; margin-bottom: 10px;">
+              The history subcollection is not accessible. Please update your Firestore Security Rules:
+            </p>
+            <ol style="color: #856404; font-size: 0.85rem; line-height: 1.6; padding-left: 20px; margin: 0;">
+              <li>Go to Firebase Console → Firestore Database → Rules</li>
+              <li>Add read/write permissions for the history subcollection</li>
+              <li>Click Publish and wait 1-2 minutes</li>
+              <li>Refresh this page and try again</li>
+            </ol>
+          </div>
+        `;
+      } else if (!auth.currentUser) {
+        errorMessage = 'Authentication Required';
+        helpText = '<p style="color: #999; font-size: 0.9rem; margin-top: 10px;">Please log out and log back in.</p>';
+      }
+      
+      historyContent.innerHTML = `
+        <div style="text-align: center; padding: 40px 20px;">
+          <p style="font-size: 3rem; margin-bottom: 10px;">❌</p>
+          <p style="color: #e74c3c; font-size: 1.2rem; font-weight: 500; margin: 10px 0;">${errorMessage}</p>
+          <p style="color: #999; font-size: 0.95rem;">${error.message}</p>
+          ${helpText}
+        </div>
+      `;
+    }
+  }
+
+
+  function closeHistoryModal() {
+    document.getElementById("historyModal").style.display = "none";
+  }
+
+  // Close modal when clicking outside
+  window.onclick = function(event) {
+    const modal = document.getElementById("historyModal");
+    if (event.target == modal) {
+      modal.style.display = "none";
+    }
+  }
+
+  function goToDashboard() {
+    console.log("Dashboard clicked - clearing sessionStorage");
+    
+    // Clear any existing view or edit data to ensure fresh SBAR form
+    sessionStorage.removeItem("viewPatient");
+    sessionStorage.removeItem("editPatient");
+    
+    // Close sidebar
+    closeNav();
+    
+    // Redirect to SBAR page for creating new report
+    window.location.href = "SBAR.html";
+  }
+
+  function openNav() {
+    const sidebar = document.getElementById("mySidebar");
+    const overlay = document.getElementById("sidebarOverlay");
+    const mainWrapper = document.getElementById("mainWrapper");
+    
+    sidebar.style.width = "280px";
+    overlay.classList.add("active");
+    mainWrapper.classList.add("pushed");
+    
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeNav() {
+    const sidebar = document.getElementById("mySidebar");
+    const overlay = document.getElementById("sidebarOverlay");
+    const mainWrapper = document.getElementById("mainWrapper");
+    
+    sidebar.style.width = "0";
+    overlay.classList.remove("active");
+    mainWrapper.classList.remove("pushed");
+    
+    document.body.style.overflow = "auto";
+  }
+
+  // Close sidebar with ESC key
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' || event.key === 'Esc') {
+      const sidebar = document.getElementById("mySidebar");
+      if (sidebar.style.width !== "0px" && sidebar.style.width !== "") {
+        closeNav();
+      }
+    }
+  });
+</script>
+
+</div>
+
+<footer class="footer">
+  <p>&copy; 2025 SBAR Tool Project | Developed for Hospital Use in Batangas Province</p>
+  <p>Property of <strong>B.Bautista / C.A.L</strong></p>
+</footer>
+
+</div>
+<!-- End Main Wrapper -->
+
+</body>
+</html>

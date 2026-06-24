@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Research Utilization - SBAR Tool for Nurses</title>
+  <script>
+    if (window.top !== window.self) {
+      window.top.location = window.location;
+    }
+  </script>
+  <link rel="stylesheet" href="researchutil.css">
+</head>
+<body>
+
+  <header>
+    <h1>Research Utilization</h1>
+    <p>Evidence-Based Implementation of the SBAR Dashboard</p>
+  </header>
+
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="login.html" id="login-link">Login</a>
+    <div class="dropdown" id="profile-dropdown" style="display: none;">
+      <a href="#" class="dropdown-toggle" id="profile-toggle">Profile</a>
+      <div class="dropdown-menu">
+        <a href="account.html">Account Settings</a>
+        <a href="#" id="logout-link">Logout</a>
+      </div>
+    </div>
+    <a href="patientlist.html" id="patients-link">Patients</a>
+    <a href="SBAR.html">Dashboard</a>
+  </nav>
+
+  <main>
+    <div class="research-container">
+      <h2>Research Utilization Framework</h2>
+
+      <div class="research-section">
+        <h3>Background and Purpose</h3>
+        <p>The findings of this study led to the development of a digital SBAR dashboard designed to improve communication among nurses in hospital settings. Based on the proven benefits of the SBAR (Situation, Background, Assessment, Recommendation) framework in enhancing clarity, consistency, and safety in patient handovers, the dashboard was created to support staff nurses in selected hospitals in Batangas Province.</p>
+      </div>
+
+      <div class="highlight-box">
+        <h4>📊 Evidence-Based Foundation</h4>
+        <p>The SBAR framework has been widely recognized in nursing literature as an effective structured communication tool that reduces errors, improves patient safety, and enhances interprofessional collaboration.</p>
+      </div>
+
+      <div class="research-section">
+        <h3>Dashboard Features and Functionality</h3>
+        <p>The SBAR dashboard allows nurses to select their hospital and department, log their shift, and systematically document patient information using the SBAR format. Key features include:</p>
+        <ul>
+          <li><strong>Structured SBAR Documentation</strong> - Guides nurses through Situation, Background, Assessment, and Recommendation sections</li>
+          <li><strong>Digital Signature System</strong> - Ensures accountability and traceability of patient handovers</li>
+          <li><strong>Shift Summary Pane</strong> - Consolidates patient updates for comprehensive shift reports</li>
+          <li><strong>Real-time Documentation</strong> - Supports immediate clinical documentation at the point of care</li>
+          <li><strong>Patient List Management</strong> - Organized view of all patients under nurse's care</li>
+        </ul>
+      </div>
+
+      <div class="info-box">
+        <h4>🎯 Implementation Goals</h4>
+        <p>This tool aims to support real-time documentation, reduce communication errors, promote continuity of care, and reinforce evidence-based nursing practice in daily clinical workflows.</p>
+      </div>
+
+      <div class="research-section">
+        <h3>Clinical Implementation Strategy</h3>
+        <p>The prototype is designed to be user-friendly and accessible via web browsers, making it a practical solution for immediate clinical implementation. The dashboard can be integrated into existing hospital workflows to reinforce evidence-based nursing practice and improve interprofessional collaboration.</p>
+        <p>Key implementation considerations include:</p>
+        <ul>
+          <li>Web-based accessibility requiring no special software installation</li>
+          <li>Responsive design compatible with tablets, computers, and mobile devices</li>
+          <li>Integration with existing hospital shift patterns and workflows</li>
+          <li>Support for multiple hospitals and departments within the system</li>
+          <li>Secure user authentication and data management</li>
+        </ul>
+      </div>
+
+      <div class="research-section">
+        <h3>Future Directions and Evaluation</h3>
+        <p>As part of the research utilization process, the proposed dashboard will be presented to hospital administrators and nursing management in the study sites for potential pilot testing and feedback. The implementation roadmap includes:</p>
+        <ul>
+          <li><strong>Phase 1:</strong> Presentation to hospital stakeholders and nursing leadership</li>
+          <li><strong>Phase 2:</strong> Pilot testing in select units with volunteer nurse participants</li>
+          <li><strong>Phase 3:</strong> Collection of end-user feedback and usability evaluations</li>
+          <li><strong>Phase 4:</strong> Refinement based on actual workflow observations and nurse recommendations</li>
+          <li><strong>Phase 5:</strong> Broader implementation and integration with hospital information systems</li>
+        </ul>
+      </div>
+
+      <div class="highlight-box">
+        <h4>💡 Expected Outcomes</h4>
+        <p>Successful implementation is expected to enhance communication quality during shift handovers, reduce documentation time, improve patient safety through standardized reporting, and increase nurse confidence in clinical communication.</p>
+      </div>
+
+      <div class="research-section">
+        <h3>Continuous Quality Improvement</h3>
+        <p>Recommendations for future improvement and full system integration will be guided by nurse end-user evaluations and actual workflow observations. The dashboard development team remains committed to iterative improvements based on real-world clinical feedback and emerging best practices in nursing informatics.</p>
+        <p>Ongoing evaluation metrics will include user satisfaction scores, time efficiency measurements, error reduction rates, and qualitative feedback from nursing staff regarding the tool's impact on clinical practice and patient care quality.</p>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p>&copy; 2025 SBAR Tool Project | Developed for Hospital Use in Batangas Province</p>
+    <p>Property of <strong>B.Bautista / C.A.L</strong></p>
+  </footer>
+
+  <script>
+    // Check if user is logged in
+    function checkLoginStatus() {
+      const currentNurse = sessionStorage.getItem("currentNurse");
+      const loginLink = document.getElementById("login-link");
+      const patientsLink = document.getElementById("patients-link");
+      const profileDropdown = document.getElementById("profile-dropdown");
+
+      if (currentNurse) {
+        loginLink.style.display = "none";
+        patientsLink.style.display = "inline-block";
+        profileDropdown.style.display = "inline-block";
+      } else {
+        loginLink.style.display = "inline-block";
+        loginLink.textContent = "Login";
+        loginLink.href = "login.html";
+        patientsLink.style.display = "none";
+        profileDropdown.style.display = "none";
+      }
+    }
+
+    // Dropdown toggle functionality
+    function setupDropdown() {
+      const profileToggle = document.getElementById("profile-toggle");
+      const profileDropdown = document.getElementById("profile-dropdown");
+      const logoutLink = document.getElementById("logout-link");
+
+      if (profileToggle) {
+        profileToggle.addEventListener("click", function(e) {
+          e.preventDefault();
+          profileDropdown.classList.toggle("active");
+        });
+
+        document.addEventListener("click", function(e) {
+          if (!profileDropdown.contains(e.target)) {
+            profileDropdown.classList.remove("active");
+          }
+        });
+      }
+
+      if (logoutLink) {
+        logoutLink.addEventListener("click", function(e) {
+          e.preventDefault();
+          sessionStorage.removeItem("currentNurse");
+          window.location.href = "login.html";
+        });
+      }
+    }
+
+    window.onload = function() {
+      checkLoginStatus();
+      setupDropdown();
+    };
+  </script>
+
+</body>
+</html>

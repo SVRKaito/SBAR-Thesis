@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up - SBAR Tool for Nurses</title>
+  <script>
+    if (window.top !== window.self) {
+      window.top.location = window.location;
+    }
+  </script>
+  <link rel="stylesheet" href="signup.css">
+</head>
+<body>
+
+  <header>
+    <h1>SBAR Tool for Nurses</h1>
+    <p>Improving Nursing Communication for Safer Patient Care</p>
+  </header>
+
+  <div class="signup-wrapper">
+    <div class="signup-container">
+      <h2>Nurse Registration</h2>
+      <p class="subtitle">Create your account to access the SBAR dashboard</p>
+
+      <form id="signupForm">
+        <div class="form-group">
+          <label for="fullname">Full Name *</label>
+          <input type="text" id="fullname" placeholder="Enter your full name" autocomplete="name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address *</label>
+          <input type="email" id="email" placeholder="Enter your email" autocomplete="email" required>
+        </div>
+
+        <div class="form-group">
+          <label for="license">PRC License Number *</label>
+          <input type="text" id="license" placeholder="Enter your PRC license number" required>
+        </div>
+
+        <div class="form-group">
+          <label for="hospital">Hospital Name *</label>
+          <select id="hospital" required>
+            <option value="" disabled selected>Select your hospital</option>
+            <option value="United Doctor of Saint Camillus">United Doctor of Saint Camillus</option>
+            <option value="Batangas Healthcare Specialists Medical Center">Batangas Healthcare Specialists Medical Center</option>
+            <option value="Batangas Health Care Hospital- Jesus of Nazareth">Batangas Health Care Hospital- Jesus of Nazareth</option>
+            <option value="Our Lady of Caysasay Medical Center">Our Lady of Caysasay Medical Center</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="department">Department *</label>
+          <input type="text" id="department" placeholder="Enter your department" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Create Password *</label>
+          <div class="password-wrapper">
+            <input type="password" id="password" placeholder="Enter a strong password (min. 6 characters)" autocomplete="new-password" required>
+            <button type="button" class="toggle-password" id="togglePassword" aria-label="Show password">
+              <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <svg class="eye-off-icon" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+            </button>
+          </div>
+          <div id="password-strength" class="password-strength"></div>
+        </div>
+
+        <div id="message"></div>
+
+        <button type="submit" class="register-btn" id="register-btn">Create Account</button>
+      </form>
+
+      <div class="divider">or</div>
+
+      <button class="login-btn" onclick="location.href='login.html'">Already have an account? Login</button>
+
+      <div class="back-home">
+        <a href="index.html">← Back to Home</a>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <p>&copy; 2025 SBAR Tool Project | Developed for Hospital Use in Batangas Province</p>
+    <p>Property of <strong>B.Bautista / C.A.L</strong></p>
+  </footer>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCACFjgnRVKjmL-1s68lLpmGNE79xlhBw8",
+      authDomain: "sbar-tool.firebaseapp.com",
+      projectId: "sbar-tool",
+      storageBucket: "sbar-tool.appspot.com",
+      messagingSenderId: "529664032389",
+      appId: "1:529664032389:web:2cb701c9c684e8618133ec",
+      measurementId: "G-KPF92F2ZK4"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Password visibility toggle
+    const togglePasswordBtn = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    const eyeIcon = document.querySelector('.eye-icon');
+    const eyeOffIcon = document.querySelector('.eye-off-icon');
+
+    togglePasswordBtn.addEventListener('click', function() {
+      const type = passwordInput.type === 'password' ? 'text' : 'password';
+      passwordInput.type = type;
+      
+      if (type === 'text') {
+        eyeIcon.style.display = 'none';
+        eyeOffIcon.style.display = 'block';
+        togglePasswordBtn.setAttribute('aria-label', 'Hide password');
+      } else {
+        eyeIcon.style.display = 'block';
+        eyeOffIcon.style.display = 'none';
+        togglePasswordBtn.setAttribute('aria-label', 'Show password');
+      }
+    });
+
+    // Password strength indicator
+    const strengthIndicator = document.getElementById('password-strength');
+
+    passwordInput.addEventListener('input', function() {
+      const password = this.value;
+      
+      if (password.length === 0) {
+        strengthIndicator.textContent = '';
+        strengthIndicator.className = 'password-strength';
+      } else if (password.length < 6) {
+        strengthIndicator.textContent = 'Too short (minimum 6 characters)';
+        strengthIndicator.className = 'password-strength weak';
+      } else if (password.length < 8) {
+        strengthIndicator.textContent = 'Weak password';
+        strengthIndicator.className = 'password-strength weak';
+      } else if (password.length < 12 && /[A-Z]/.test(password) && /[0-9]/.test(password)) {
+        strengthIndicator.textContent = 'Medium password';
+        strengthIndicator.className = 'password-strength medium';
+      } else if (password.length >= 12 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password)) {
+        strengthIndicator.textContent = 'Strong password';
+        strengthIndicator.className = 'password-strength strong';
+      } else {
+        strengthIndicator.textContent = 'Medium password';
+        strengthIndicator.className = 'password-strength medium';
+      }
+    });
+
+    // Form submission
+    document.getElementById('signupForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const fullname = document.getElementById('fullname').value.trim();
+      const email = document.getElementById('email').value.trim().toLowerCase();
+      const license = document.getElementById('license').value.trim();
+      const hospital = document.getElementById('hospital').value;
+      const department = document.getElementById('department').value.trim();
+      const password = document.getElementById('password').value;
+      const message = document.getElementById('message');
+      const registerBtn = document.getElementById('register-btn');
+
+      // Clear previous messages
+      message.textContent = "";
+      message.className = "";
+      message.style.display = "none";
+
+      // Validation
+      if (!fullname || !email || !license || !hospital || !department || !password) {
+        message.textContent = "⚠️ Please fill in all required fields.";
+        message.className = "error";
+        message.style.display = "block";
+        return;
+      }
+
+      // Email validation
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(email)) {
+        message.textContent = "⚠️ Please enter a valid email address.";
+        message.className = "error";
+        message.style.display = "block";
+        return;
+      }
+
+      // Password validation
+      if (password.length < 6) {
+        message.textContent = "⚠️ Password must be at least 6 characters long.";
+        message.className = "error";
+        message.style.display = "block";
+        return;
+      }
+
+      // Disable button and show loading state
+      registerBtn.disabled = true;
+      registerBtn.textContent = "Creating Account...";
+
+      try {
+        // Create user account
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Save nurse profile using UID as doc ID
+        await setDoc(doc(db, "nurses", user.uid), {
+          fullname: fullname,
+          email: email,
+          license: license,
+          hospital: hospital,
+          department: department,
+          createdAt: new Date().toISOString()
+        });
+
+        // Show success message
+        message.textContent = "✅ Registration successful! Redirecting to login...";
+        message.className = "success";
+        message.style.display = "block";
+
+        // Clear form
+        document.getElementById('signupForm').reset();
+        strengthIndicator.textContent = '';
+        strengthIndicator.className = 'password-strength';
+
+        // Redirect to login page
+        setTimeout(() => {
+          window.location.href = "login.html";
+        }, 2000);
+
+      } catch (error) {
+        console.error("Signup error:", error);
+
+        // Re-enable button
+        registerBtn.disabled = false;
+        registerBtn.textContent = "Create Account";
+
+        // Handle Firebase errors
+        switch (error.code) {
+          case "auth/email-already-in-use":
+            message.textContent = "❌ This email is already registered. Please login instead.";
+            break;
+          case "auth/invalid-email":
+            message.textContent = "❌ Please enter a valid email address.";
+            break;
+          case "auth/weak-password":
+            message.textContent = "❌ Password is too weak. Please use at least 6 characters.";
+            break;
+          case "auth/network-request-failed":
+            message.textContent = "❌ Network error. Please check your internet connection.";
+            break;
+          default:
+            message.textContent = "❌ Registration failed: " + (error.message || "Unknown error");
+        }
+        message.className = "error";
+        message.style.display = "block";
+      }
+    });
+  </script>
+
+</body>
+</html>
